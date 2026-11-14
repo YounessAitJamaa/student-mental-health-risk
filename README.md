@@ -114,3 +114,33 @@ python src/check_environment.py
 ## Note
 
 This project is for educational purposes only. Its predictions are not medical diagnoses or suitable for real-world student mental health assessments.
+
+## Model Artifacts
+
+The final selected model is Logistic Regression.
+
+The complete fitted preprocessing and classification pipeline
+is saved in:
+
+- `models/final_logistic_regression_pipeline.joblib`
+
+Additional artifacts:
+
+- `models/model_metadata.json` — Model configuration, input features,
+  target classes, and dependency versions.
+- `reports/metrics.json` — Independent test evaluation results.
+- `reports/baseline_model_comparison.csv` — Initial model comparison.
+- `reports/model_comparison.csv` — Hyperparameter optimization results.
+- `reports/figures/test_confusion_matrix.png` — Confusion matrix.
+
+The serialized pipeline includes missing-value imputation,
+feature scaling, categorical encoding, and classification.
+
+Model inference requires the 15 input features documented
+in `model_metadata.json`.
+
+The model should be loaded only from trusted files using
+compatible Python and Scikit-learn dependencies.
+
+Predictions are intended for educational demonstration
+using fictional profiles only.

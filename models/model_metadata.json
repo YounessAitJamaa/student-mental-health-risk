@@ -1,0 +1,42 @@
+{
+    "model_name": "Logistic Regression",
+    "model_file": "models/final_logistic_regression_pipeline.joblib",
+    "target": "Mental_Health_Risk",
+    "target_classes": [
+        "High",
+        "Low",
+        "Medium"
+    ],
+    "input_features": [
+        "Age",
+        "Gender",
+        "Year_of_Study",
+        "Sleep_Hours",
+        "Study_Hours_Per_Week",
+        "GPA",
+        "Social_Media_Hours",
+        "Screen_Time_Hours",
+        "Physical_Activity",
+        "Financial_Stress",
+        "Family_Support",
+        "Attendance_Rate",
+        "Part_Time_Job",
+        "Diet_Quality",
+        "Previous_Mental_Health_History"
+    ],
+    "training_samples": 1600,
+    "test_size": 0.2,
+    "random_state": 42,
+    "cv_folds": 3,
+    "scoring": "f1_macro",
+    "best_parameters": {
+        "classifier__C": 1
+    },
+    "cv_macro_f1": 0.7513166136304238,
+    "python_version": "3.14.8",
+    "sklearn_version": "1.9.1",
+    "pandas_version": "3.1.1",
+    "numpy_version": "2.5.4",
+    "joblib_version": "1.6.0",
+    "educational_only": true
+}
