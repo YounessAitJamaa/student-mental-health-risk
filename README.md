@@ -144,3 +144,26 @@ compatible Python and Scikit-learn dependencies.
 
 Predictions are intended for educational demonstration
 using fictional profiles only.
+
+## Streamlit Application
+
+The project includes an interactive dashboard for exploring
+Machine Learning classification performance.
+
+### Features
+
+- Final model performance metrics.
+- Class-specific classification results.
+- Model comparison visualizations.
+- Confusion matrix.
+- Educational-use disclaimer.
+
+The application loads previously generated evaluation artifacts
+and does not retrain the Machine Learning model.
+
+### Run the Application
+
+Activate the Python virtual environment and install dependencies:
+
+```bash
+pip install -r requirements.txt
