@@ -167,3 +167,21 @@ Activate the Python virtual environment and install dependencies:
 
 ```bash
 pip install -r requirements.txt
+
+```
+### Fictional Student Prediction
+
+The Streamlit application includes an interactive prediction form
+for fictional student profiles.
+
+The form collects the 15 features required by the trained model.
+
+The application loads the saved Machine Learning pipeline using Joblib
+and uses Streamlit caching to avoid unnecessary model reloading.
+
+Predictions are generated without retraining the model.
+
+The application does not intentionally save or log submitted profiles.
+
+This feature is strictly educational and must not be used for
+clinical assessment or real student evaluation.
