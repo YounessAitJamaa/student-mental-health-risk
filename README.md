@@ -394,3 +394,125 @@ Airflow provides an interface for monitoring task execution,
 viewing logs, and identifying errors.
 
 The pipeline is educational and does not perform clinical assessments.
+
+## Apache Airflow ML Pipeline
+
+Apache Airflow is used to automate and monitor the Machine Learning workflow.
+
+The project contains a DAG named `smhr_ml_pipeline`.
+
+### Pipeline Tasks
+
+The DAG contains five tasks executed in the following order:
+
+1. **validate_data:** Check that the dataset exists and contains valid data.
+2. **prepare_data:** Split the dataset and prepare training data.
+3. **train_model:** Train Logistic Regression with preprocessing.
+4. **evaluate_model:** Evaluate the model using cross-validation.
+5. **save_artifacts:** Save the trained model and evaluation results.
+
+Each task must complete successfully before the next task starts.
+
+### Scheduling and Retries
+
+The DAG uses the following configuration:
+
+- **Schedule:** Weekly, every Sunday at 00:00 UTC.
+- **Retries:** 2 additional attempts if a task fails.
+- **Retry delay:** 5 minutes.
+- **Catchup:** Disabled.
+
+Airflow also records task execution logs to help monitor the workflow
+and investigate errors.
+
+### Running Airflow
+
+From the project directory, activate the Airflow environment:
+
+```bash
+source airflow_env.sh
+```
+
+Start Airflow:
+
+```bash
+airflow standalone
+```
+
+Open the Airflow dashboard:
+
+http://127.0.0.1:8080
+
+Log in using the local Airflow administrator credentials.
+
+### Running the ML Pipeline
+
+The DAG can be executed manually from the Airflow dashboard.
+
+It can also be tested using:
+
+```bash
+airflow dags test smhr_ml_pipeline
+```
+
+To check for DAG import errors:
+
+```bash
+airflow dags list-import-errors
+```
+
+To list DAG executions:
+
+```bash
+airflow dags list-runs smhr_ml_pipeline
+```
+
+### Generated Artifacts
+
+Each execution creates a separate directory for its results.
+
+The generated model is saved under:
+
+`models/airflow/`
+
+The evaluation metrics are saved under:
+
+`reports/airflow/`
+
+Temporary training data is stored under:
+
+`data/processed/airflow/`
+
+These generated artifacts are excluded from Git.
+
+The Airflow workflow does not overwrite the official final model
+or its independent test evaluation results.
+
+### Execution Results
+
+The pipeline was tested successfully using Apache Airflow.
+
+Results:
+
+- All five tasks completed successfully.
+- No DAG import errors were detected.
+- Automatic scheduled execution was observed.
+- Cross-validation: 3 folds.
+- Evaluation metric: Macro F1.
+- Mean CV Macro F1: 0.7513.
+- CV standard deviation: 0.0100.
+
+The results are consistent with the original Logistic Regression experiments.
+
+### Monitoring
+
+The Airflow dashboard allows users to:
+
+- Monitor DAG executions.
+- Check successful and failed tasks.
+- View execution duration.
+- Inspect task logs.
+- Identify execution errors.
+
+The workflow is intended for educational purposes only.
+It is not suitable for clinical mental health assessment.
