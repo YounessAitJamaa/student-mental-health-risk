@@ -1,3 +1,9 @@
-# Airflow dependencies only; use Python 3.14 in .venv-airflow.
+# Dependencies for .venv-airflow only; use Python 3.14.
 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.4.0/constraints-3.14.txt
 apache-airflow==3.4.0
+
+# ML packages compatible with the Airflow constraints above.
+numpy==2.5.4
+pandas==3.1.0
+scikit-learn==1.9.1
+joblib==1.6.0

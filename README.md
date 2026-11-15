@@ -323,3 +323,50 @@ after verification; use the start command above for your presentation.
 Airflow's CLI may display upstream Python deprecation warnings and a warning
 about the optional Graphviz package. Graphviz is not needed to run this DAG or
 use the web interface; no extra graph-rendering dependency was installed.
+
+## Machine Learning Workflow DAG (SMHR-28)
+
+The manual DAG `smhr_ml_pipeline` runs five ordinary functions from
+`src/ml_workflow.py`:
+
+`validate_data → prepare_data → train_model → evaluate_model → save_artifacts`
+
+- **validate_data:** checks the dataset file, required columns, and labels.
+- **prepare_data:** excludes `Student_ID` and makes the same 80/20 stratified
+  split as the notebooks, using seed 42.
+- **train_model:** fits imputation, scaling, encoding, and Logistic Regression
+  together in one pipeline, using training data only.
+- **evaluate_model:** calculates three-fold Macro F1 on the training set.
+  The held-out test set is not used.
+- **save_artifacts:** saves the new model and metrics separately from the
+  official model and evaluation results.
+
+The DAG uses `task(function)` to turn each Python function into an Airflow
+task. Passing one task's returned path to the next sets their execution order.
+Feature names and model settings come from `models/model_metadata.json`.
+
+Start Airflow from the project root:
+
+```bash
+source airflow_env.sh
+airflow standalone
+```
+
+In another terminal:
+
+```bash
+source airflow_env.sh
+airflow dags list-import-errors
+airflow dags unpause smhr_ml_pipeline
+airflow dags trigger smhr_ml_pipeline
+airflow dags list-runs smhr_ml_pipeline
+```
+
+Open <http://127.0.0.1:8080> to check task statuses and logs. Stop Airflow
+with **Ctrl+C** in the first terminal.
+
+Each run uses its own folder under `data/processed/airflow/`,
+`models/airflow/`, and `reports/airflow/`. All three output locations are
+ignored by Git. Only paths pass between tasks; student rows are not printed.
+Only load trusted, locally generated Joblib files. The workflow is strictly
+educational and non-clinical.

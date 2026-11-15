@@ -5,6 +5,8 @@ source .venv-airflow/bin/activate
 export AIRFLOW_HOME="$PWD/.airflow"
 export AIRFLOW__CORE__DAGS_FOLDER="$PWD/dags"
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
+# Allow DAG tasks to import the project's src module.
+export PYTHONPATH="$PWD"
 mkdir -p "$AIRFLOW_HOME"
 chmod 700 "$AIRFLOW_HOME"
 
