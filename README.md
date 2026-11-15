@@ -31,7 +31,7 @@ The project follows these steps:
 
 1. **Data Exploration:** Load the dataset, understand its features, and visualize patterns.
 2. **Data Preprocessing:** Handle missing values, categorical features, and numerical scaling while preventing data leakage.
-3. **Model Training:** Train Logistic Regression, Decision Tree, and Random Forest classifiers.
+3. **Model Training:** Train and compare Logistic Regression, SVC, and Random Forest classifiers.
 4. **Model Evaluation:** Compare models using classification metrics and select the best-performing approach.
 5. **Model Optimization:** Tune hyperparameters using cross-validation.
 6. **Model Saving:** Save the trained preprocessing and classification pipeline using Joblib.
@@ -110,6 +110,20 @@ Run the environment test script:
 ```bash
 python src/check_environment.py
 ```
+### Dataset Setup
+
+The dataset is available on Kaggle:
+
+[Mental Health Risk Prediction Dataset](https://www.kaggle.com/datasets/maqdadali/mental-health-risk-prediction-dataset-students)
+
+Download the dataset and place the CSV file in:
+
+`data/raw/student_mental_health.csv`
+
+If the directory does not exist, create it:
+
+```bash
+mkdir -p data/raw
 
 ## Note
 
@@ -516,3 +530,40 @@ The Airflow dashboard allows users to:
 
 The workflow is intended for educational purposes only.
 It is not suitable for clinical mental health assessment.
+
+## Final Model Results
+
+Three classification models were trained and compared:
+
+- Logistic Regression
+- Support Vector Classifier (SVC)
+- Random Forest
+
+Logistic Regression was selected because it achieved the best
+cross-validation performance.
+
+### Final Test Performance
+
+| Metric | Score |
+|---|---|
+| Accuracy | 75.50% |
+| Macro Precision | 75.40% |
+| Macro Recall | 75.43% |
+| Macro F1-score | 75.41% |
+| ROC-AUC (OvR) | 0.914 |
+
+The selected model achieved a cross-validation Macro F1-score
+of 0.7513.
+
+### Model Limitations
+
+The model performs better on the High and Low classes than on
+the Medium class.
+
+The Medium class achieved an F1-score of approximately 0.63.
+
+The dataset may not represent all student populations.
+
+This project is strictly educational. Model predictions are
+not medical diagnoses and must not be used to make real-world
+decisions about students.
