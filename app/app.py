@@ -1,10 +1,16 @@
 import json
+import logging
+import math
+from numbers import Real
 from pathlib import Path
 
-import pandas as pd
-import streamlit as st
-
 import joblib
+import pandas as pd
+import sklearn
+import streamlit as st
+from sklearn.pipeline import Pipeline
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -13,26 +19,84 @@ MODELS_DIR = PROJECT_ROOT / "models"
 
 MODEL_PATH = MODELS_DIR / "final_logistic_regression_pipeline.joblib"
 
+NUMERIC_RANGES = {
+    "Age": (17, 29),
+    "Year_of_Study": (1, 5),
+    "Sleep_Hours": (0, 12),
+    "Study_Hours_Per_Week": (0, 80),
+    "GPA": (0, 4),
+    "Social_Media_Hours": (0, 24),
+    "Screen_Time_Hours": (0, 24),
+    "Financial_Stress": (1, 10),
+    "Family_Support": (1, 10),
+    "Attendance_Rate": (0, 100)
+}
+
+CATEGORICAL_FEATURES = [
+    "Gender", "Physical_Activity", "Part_Time_Job", "Diet_Quality",
+    "Previous_Mental_Health_History"
+]
+
 
 def load_json(file_path):
+    """Read a JSON report or metadata file into a Python dictionary."""
     with open(file_path, "r", encoding="utf-8") as file:
         return json.load(file)
 
+
 @st.cache_resource
-def load_prediction_model():
-    model = joblib.load(MODEL_PATH)
+def load_prediction_model(model_path, expected_version):
+    """Load only the project's trusted, locally installed model artifact."""
+    model_path = Path(model_path)
+
+    if not model_path.is_file():
+        raise FileNotFoundError("Model artifact is missing.")
+
+    # Joblib can execute code. Never accept an uploaded or user-selected file.
+    if model_path.resolve() != MODEL_PATH.resolve() or model_path.is_symlink():
+        raise ValueError("Only the trusted project model can be loaded.")
+
+    if sklearn.__version__ != expected_version:
+        raise RuntimeError("Incompatible Scikit-learn version.")
+
+    model = joblib.load(model_path)
+
+    if not isinstance(model, Pipeline):
+        raise TypeError("Expected a Scikit-learn pipeline.")
+
+    for step in ["preprocessing", "classifier"]:
+        if step not in model.named_steps:
+            raise ValueError("The model pipeline is incomplete.")
+    if not hasattr(model, "predict"):
+        raise TypeError("The model cannot make predictions.")
+
+    # Make sure the saved categories needed by the form are available.
+    get_model_categories(model)
+
     return model
 
 
-def show_prediction_form(model, metadata):
-
+def get_model_categories(model):
+    """Read the dropdown choices from the saved categorical encoder."""
     preprocessor = model.named_steps["preprocessing"]
+    categories = {}
 
-    categorical_columns = preprocessor.transformers_[1][2]
+    for name, transformer, columns in preprocessor.transformers_:
+        if name == "cat":
+            encoder = transformer.named_steps["encoder"]
+            for index, feature in enumerate(columns):
+                categories[feature] = encoder.categories_[index]
 
-    encoder = preprocessor.named_transformers_["cat"].named_steps["encoder"]
+    for feature in CATEGORICAL_FEATURES:
+        if feature not in categories or len(categories[feature]) == 0:
+            raise ValueError("Model categories are missing.")
 
-    categories = dict(zip(categorical_columns, encoder.categories_))
+    return categories
+
+
+def show_prediction_form(model, metadata):
+    """Show the 15 inputs and display a result after successful validation."""
+    categories = get_model_categories(model)
 
     st.info("Use fictional student information only.")
 
@@ -163,7 +227,7 @@ def show_prediction_form(model, metadata):
 
         expected_features = metadata["input_features"]
 
-        if set(student_data.keys()) != set(expected_features):
+        if list(student_data) != expected_features:
             st.error("The submitted features do not match the model requirements.")
             return None
 
@@ -172,22 +236,12 @@ def show_prediction_form(model, metadata):
             columns=expected_features
         )
 
-        # Generate prediction
-        try:
-            prediction = model.predict(student_df)
-
-            predicted_class = prediction[0]
-
-        except (ValueError, TypeError):
-            st.error("Unable to generate a prediction. Please check the input values.")
+        predicted_class, error_message = predict_student_profile(
+            model, student_df, metadata, categories
+        )
+        if error_message:
+            st.error(error_message)
             return None
-
-
-        # Validate predicted class
-        if predicted_class not in metadata["target_classes"]:
-            st.error("The model returned an unexpected category.")
-            return None
-
 
         # Display prediction
         st.subheader("Educational Classification Result")
@@ -202,9 +256,96 @@ def show_prediction_form(model, metadata):
 
         return student_df
 
-        st.success("Fictional profile submitted successfully!")
-   
+
+def predict_student_profile(model, student_df, metadata, categories):
+    """Validate one fictional profile, returning a result or a simple error."""
+    try:
+        valid, message = validate_student_schema(student_df, metadata, categories)
+        if not valid:
+            return None, message
+
+        valid, message = validate_numeric_inputs(student_df)
+        if not valid:
+            return None, message
+
+        prediction = model.predict(student_df)
+        if len(prediction) != 1:
+            raise ValueError("Expected exactly one prediction.")
+        predicted_class = prediction[0]
+        if predicted_class not in metadata["target_classes"]:
+            raise ValueError("Unexpected prediction category.")
+        return predicted_class, ""
+
+    except Exception as error:
+        # Exception messages and tracebacks may contain submitted feature values.
+        logger.error("Model inference failed: %s", type(error).__name__)
+        return None, "Unable to generate a prediction. Please try again later."
+
+
+def validate_numeric_inputs(student_df):
+    """Check numeric types, finite values, ranges, and whole-number fields."""
+    if not isinstance(student_df, pd.DataFrame):
+        return False, "Input must be a Pandas DataFrame."
+    if len(student_df) != 1:
+        return False, "Please submit exactly one fictional profile."
+    if student_df.columns.has_duplicates:
+        return False, "Input features must not be duplicated."
+
+    for feature, (minimum, maximum) in NUMERIC_RANGES.items():
+
+        if feature not in student_df.columns:
+            return False, f"Missing required feature: {feature}"
+
+        value = student_df[feature].iloc[0]
+
+        # Real accepts Python and NumPy numbers; bool must be rejected separately.
+        if not isinstance(value, Real) or isinstance(value, bool):
+            return False, f"{feature} must be a number."
+
+        if not math.isfinite(float(value)):
+            return False, f"{feature} must be a finite number."
+
+        if value < minimum or value > maximum:
+            return False, f"{feature} must be between {minimum} and {maximum}."
+
+        if feature in ("Age", "Year_of_Study") and not float(value).is_integer():
+            return False, f"{feature} must be a whole number."
+
+    return True, ""
+
+
+def validate_student_schema(student_df, metadata, categories):
+    """Check one complete row, the feature order, and the allowed categories."""
+
+    expected_features = metadata["input_features"]
+
+    if not isinstance(student_df, pd.DataFrame):
+        return False, "Input must be a Pandas DataFrame."
+
+    if len(student_df) != 1:
+        return False, "Please submit exactly one fictional profile."
+
+    if list(student_df.columns) != expected_features:
+        return False, "Input features do not match the model schema."
+
+    if student_df.isna().any().any():
+        return False, "All input fields are required."
+
+    for feature, allowed_values in categories.items():
+
+        value = student_df[feature].iloc[0]
+
+        if not isinstance(value, str):
+            return False, f"{feature} must be a category."
+
+        if value not in allowed_values:
+            return False, f"Invalid category for {feature}."
+
+    return True, ""
+
+
 def main():
+    """Display the saved evaluation results and the fictional-profile form."""
     st.set_page_config(
         page_title="Student Mental Health - Model Performance",
         layout="wide"
@@ -220,6 +361,8 @@ def main():
     try:
         metrics = load_json(REPORTS_DIR / "metrics.json")
         metadata = load_json(MODELS_DIR / "model_metadata.json")
+        if not isinstance(metadata, dict):
+            raise ValueError("Model metadata must be a dictionary.")
 
         required_metrics = [
             "accuracy",
@@ -241,7 +384,8 @@ def main():
         }).T
 
     except (OSError, ValueError, KeyError, TypeError) as error:
-        st.error(f"Unable to load evaluation reports: {error}")
+        logger.error("Report or metadata loading failed: %s", type(error).__name__)
+        st.error("The evaluation reports or model information are currently unavailable.")
         st.stop()
 
     st.subheader("Selected Model")
@@ -311,16 +455,27 @@ def main():
     st.subheader("Fictional Student Prediction")
 
     try:
-        prediction_model = load_prediction_model()
+        prediction_model = load_prediction_model(
+            MODEL_PATH,
+            metadata["sklearn_version"]
+        )
+        if list(prediction_model.feature_names_in_) != metadata["input_features"]:
+            raise ValueError("Model features do not match the metadata.")
 
-        st.success("Prediction model loaded successfully!")
+    except Exception as error:
 
-        st.write("Pipeline steps:", list(prediction_model.named_steps))
+        logger.error(
+            "Model loading failed: %s",
+            type(error).__name__
+        )
 
-        student_df = show_prediction_form(prediction_model, metadata)
+        st.error(
+            "The prediction model is currently unavailable. "
+            "Please verify the model installation."
+        )
 
-    except (OSError, ValueError) as error:
-        st.error(f"Unable to load prediction model: {error}")
+    else:
+        show_prediction_form(prediction_model, metadata)
 
 
 if __name__ == "__main__":

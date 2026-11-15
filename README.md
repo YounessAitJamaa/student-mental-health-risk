@@ -185,3 +185,46 @@ The application does not intentionally save or log submitted profiles.
 
 This feature is strictly educational and must not be used for
 clinical assessment or real student evaluation.
+
+### Input Validation and Error Handling (SMHR-33)
+
+Before prediction, the application checks that exactly one fictional profile
+contains all 15 features in the expected order, with no missing or extra fields.
+Numeric values must be finite and within the form's allowed ranges; age and
+year of study must be whole numbers. Categories must match the fitted encoder.
+Invalid profiles are rejected before the model is called.
+
+The model is loaded with `st.cache_resource` only from the trusted project
+artifact. Never replace it with an untrusted file: Joblib deserialization can
+execute code. The loader checks file availability, the exact Scikit-learn
+version recorded in `models/model_metadata.json`, the required pipeline steps,
+and the dropdown categories. The app also checks the model's feature order
+against the metadata. Use the project's pinned dependencies; the app never
+retrains the model.
+
+Missing, corrupted, incompatible, or incomplete models show a simple
+unavailable message. Unexpected prediction failures also show a simple error.
+Technical logging records only the failed operation and exception type,
+without exception messages, tracebacks, submitted profiles, or feature values.
+The application does not save submitted profiles or configure a log file.
+After repairing or replacing a trusted artifact, restart Streamlit to clear
+the cached model.
+
+Run the application from the project root:
+
+```bash
+python -m streamlit run app/app.py
+```
+
+Run the tests after activating the virtual environment and installing dependencies:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The small test suite keeps the six original validation tests. Additional
+tests cover invalid inputs, model-loading failures, safe inference errors,
+and the Streamlit form. They use fictional profiles, temporary files, and a
+few simple mocks. The real saved pipeline is read without changing it.
+This demonstration has no established clinical validity: predictions are
+dataset categories, not diagnoses or reliable assessments of real students.
