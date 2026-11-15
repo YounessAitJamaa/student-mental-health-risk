@@ -370,3 +370,27 @@ Each run uses its own folder under `data/processed/airflow/`,
 ignored by Git. Only paths pass between tasks; student rows are not printed.
 Only load trusted, locally generated Joblib files. The workflow is strictly
 educational and non-clinical.
+
+## Airflow Scheduling and Monitoring
+
+The Machine Learning workflow is managed using Apache Airflow.
+
+The DAG `smhr_ml_pipeline` is configured with:
+
+- Weekly execution schedule.
+- Two retries for failed tasks.
+- Five minutes between retries.
+- Python logging for monitoring task execution.
+
+The workflow contains five tasks:
+
+1. Validate the dataset.
+2. Prepare training data.
+3. Train Logistic Regression.
+4. Evaluate the model using cross-validation.
+5. Save the model and evaluation results.
+
+Airflow provides an interface for monitoring task execution,
+viewing logs, and identifying errors.
+
+The pipeline is educational and does not perform clinical assessments.

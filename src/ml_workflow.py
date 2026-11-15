@@ -1,5 +1,6 @@
 """Machine Learning workflow for Apache Airflow."""
 
+import logging
 import json
 import shutil
 import tempfile
@@ -20,6 +21,8 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data/raw/student_mental_health.csv"
 METADATA_PATH = PROJECT_ROOT / "models/model_metadata.json"
+
+logger = logging.getLogger(__name__)
 
 
 # Load the model configuration
@@ -147,7 +150,7 @@ def train_model(run_directory):
     # Save the trained model
     joblib.dump(model, run_dir / "model.joblib")
 
-    print("Model training completed!")
+    logger.info("Model training completed!")
 
     return str(run_dir)
 
@@ -193,7 +196,7 @@ def evaluate_model(run_directory):
         json.dump(metrics, file, indent=4)
 
     print("Model evaluation completed!")
-    print("CV Macro F1:", round(scores.mean(), 4))
+    logger.info("CV Macro F1: %.4f", scores.mean())
 
     return str(run_dir)
 
