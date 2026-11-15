@@ -228,3 +228,98 @@ and the Streamlit form. They use fictional profiles, temporary files, and a
 few simple mocks. The real saved pipeline is read without changing it.
 This demonstration has no established clinical validity: predictions are
 dataset categories, not diagnoses or reliable assessments of real students.
+
+## Apache Airflow Development Setup (SMHR-27)
+
+Airflow 3.4.0 supports Python 3.14. This setup uses a separate `.venv-airflow`
+environment so it does not change the ML packages in `.venv`.
+See the official [prerequisites](https://airflow.apache.org/docs/apache-airflow/stable/installation/prerequisites.html)
+and [installation guide](https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html).
+
+Run these commands from the project root. Create the environment once:
+
+```bash
+.venv/bin/python -m venv .venv-airflow
+source airflow_env.sh
+python -m pip install -r requirements-airflow.txt
+airflow version
+python -m pip check
+```
+
+`requirements-airflow.txt` pins Airflow 3.4.0 and uses its official Python 3.14
+constraints file, which selects compatible dependency versions. Do not install
+this file into the ML `.venv`.
+
+For every new terminal used for Airflow, run `source airflow_env.sh` from the
+project root. This activates the Airflow environment and sets:
+
+- `AIRFLOW_HOME` to `.airflow/` for the local database, logs, and credentials.
+- `AIRFLOW__CORE__DAGS_FOLDER` to the project's `dags/` directory.
+- `AIRFLOW__CORE__LOAD_EXAMPLES=False` to hide the bundled example DAGs.
+- The API server host and port to `127.0.0.1:8080` for local access.
+
+The script also creates `.airflow/` with access restricted to your Linux user.
+Both `.airflow/` and `.venv-airflow/` are ignored by Git. Never share or commit
+generated passwords or logs.
+
+Start Airflow in the first terminal and leave it running:
+
+```bash
+source airflow_env.sh
+airflow standalone
+```
+
+Standalone initializes a SQLite database and starts the API server (including
+the web interface), scheduler, DAG processor, and triggerer. This is a local
+development setup, not a production deployment. Open <http://127.0.0.1:8080>
+and log in with `admin`. On first startup, Airflow prints a generated password
+in your own terminal. On later startups it does not print that password again.
+You can privately open `.airflow/simple_auth_manager_passwords.json.generated`
+to find it. This ignored file was already created during setup verification;
+never paste its contents into Git or shared presentation slides.
+
+In a second terminal, check DAG discovery and run the example:
+
+```bash
+source airflow_env.sh
+airflow dags list
+airflow dags list-import-errors
+airflow dags unpause smhr_example
+airflow dags trigger smhr_example
+airflow dags list-runs smhr_example
+```
+
+To check individual task statuses, copy a run ID from the last command:
+
+```bash
+airflow tasks states-for-dag-run smhr_example YOUR_RUN_ID
+```
+
+Allow a little time for the DAG processor to discover a new file and for the
+scheduler to execute a triggered run. In the web interface, open `smhr_example`,
+select its latest run, and check that both tasks are green (`success`). Open
+each task's logs to see the welcome and completion messages. You can also
+trigger another run using the interface's **Trigger DAG** button.
+
+The example in `dags/smhr_example.py` contains only `welcome` and `complete`.
+`@task` tells Airflow to run each Python function as a task. The `with DAG(...)`
+block groups them into `smhr_example`. `schedule=None` makes it manual, and
+`catchup=False` prevents historical runs. Calling the decorated functions
+creates the tasks; `welcome_task >> complete_task` makes the second wait for
+the first to succeed. It does not load data or train a model. The ML workflow
+is reserved for SMHR-28.
+
+To stop all standalone services, press **Ctrl+C** in the first terminal and
+wait for shutdown. Run `deactivate` to leave the Airflow environment. To return
+to the ML environment, run `source .venv/bin/activate`.
+
+Setup was verified locally on Python 3.14.8 with Airflow 3.4.0: dependency
+checks passed, no DAG import errors were found, and run `smhr27_verification`
+completed both tasks successfully with the expected log messages. The web
+page and authenticated DAG API were reachable, and all four service health
+checks passed. All 17 existing ML tests also passed. Services were stopped
+after verification; use the start command above for your presentation.
+
+Airflow's CLI may display upstream Python deprecation warnings and a warning
+about the optional Graphviz package. Graphviz is not needed to run this DAG or
+use the web interface; no extra graph-rendering dependency was installed.
